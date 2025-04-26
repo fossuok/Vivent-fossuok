@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 import { PencilIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
@@ -9,6 +10,8 @@ export default function StudentList() {
   const { data: students, error, mutate } = useSWR("/api/Students", fetcher);
   const [loadingAttendance, setLoadingAttendance] = useState(null);
   const [loadingDelete, setLoadingDelete] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   const toggleAttendance = async (id, present) => {
     setLoadingAttendance(id);
@@ -24,24 +27,44 @@ export default function StudentList() {
     }
   };
 
-  const deleteStudent = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this student?"
-    );
-    if (!confirmed) return;
-    
-    setLoadingDelete(id);
+  const promptDeleteStudent = (id) => {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setLoadingDelete(deleteId);
     try {
       await fetch("/api/Students", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteId }),
       });
       mutate();
     } finally {
       setLoadingDelete(null);
+      setConfirmOpen(false);
     }
   };
+
+  // const deleteStudent = async (id) => {
+  //   const confirmed = window.confirm(
+  //     "Are you sure you want to delete this student?"
+  //   );
+  //   if (!confirmed) return;
+    
+  //   setLoadingDelete(id);
+  //   try {
+  //     await fetch("/api/Students", {
+  //       method: "DELETE",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ id }),
+  //     });
+  //     mutate();
+  //   } finally {
+  //     setLoadingDelete(null);
+  //   }
+  // };
 
   if (error) 
     return (
@@ -147,7 +170,7 @@ export default function StudentList() {
                       Edit
                     </Link>
                     <button
-                      onClick={() => deleteStudent(student._id)}
+                      onClick={() => promptDeleteStudent(student._id)}
                       disabled={loadingDelete === student._id}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                     >
@@ -166,6 +189,18 @@ export default function StudentList() {
         </table>
       </div>
       
+      {/* Add the ConfirmDialog component */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Delete Student"
+        message="Are you sure you want to delete this student? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+
       {students.length === 0 && (
         <div className="text-center py-12 px-4">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
