@@ -38,3 +38,19 @@ body,
     scrollbar-color: #c1c1c1 #f1f1f1;
     /* Thumb color and track color for Firefox */
 }
+
+@keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+  
