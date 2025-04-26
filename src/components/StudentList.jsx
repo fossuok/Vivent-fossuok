@@ -6,8 +6,9 @@ import { PencilIcon, TrashIcon, CheckIcon } from "@heroicons/react/24/outline";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export default function StudentList() {
-  const { data: students, error, mutate } = useSWR("/api/Students", fetcher);
+export default function StudentList({students}) {
+  // const { data: students, error, mutate } = useSWR("/api/Students", fetcher);
+  const { mutate } = useSWR("/api/Students", fetcher);
   const [loadingAttendance, setLoadingAttendance] = useState(null);
   const [loadingDelete, setLoadingDelete] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -66,12 +67,12 @@ export default function StudentList() {
   //   }
   // };
 
-  if (error) 
-    return (
-      <div className="bg-red-50 text-red-600 p-4 rounded-lg shadow-sm text-center">
-        Failed to load students. Please try again.
-      </div>
-    );
+  // if (error) 
+  //   return (
+  //     <div className="bg-red-50 text-red-600 p-4 rounded-lg shadow-sm text-center">
+  //       Failed to load students. Please try again.
+  //     </div>
+  //   );
     
   if (!students) 
     return (

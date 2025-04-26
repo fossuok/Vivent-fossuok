@@ -11,11 +11,19 @@ export default function Dashboard() {
   const { data: students } = useSWR('/api/Students', fetcher);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredStudents = students?.filter(student =>
-    student.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students?.filter(student => {
+    // Guard against null/undefined searchTerm
+    if (!searchTerm) return true;
+    
+    const term = searchTerm.toLowerCase();
+    const firstName = student?.firstName?.toLowerCase() || '';
+    const lastName = student?.lastName?.toLowerCase() || '';
+    const email = student?.email?.toLowerCase() || '';
+    
+    return firstName.includes(term) || 
+           lastName.includes(term) || 
+           email.includes(term);
+  });  
 
   return (
     <div className="min-h-screen bg-gray-50">
