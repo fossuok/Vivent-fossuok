@@ -1,9 +1,16 @@
 "use client";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 
+
 export default function AddStudentForm({ onAdd }) {
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const workshop = searchParams.get('workshop') || 'students';
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -20,7 +27,8 @@ export default function AddStudentForm({ onAdd }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await fetch("/api/Students", {
+      // Use the workshop-specific endpoint
+      await fetch(`/api/workshops/${workshop}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

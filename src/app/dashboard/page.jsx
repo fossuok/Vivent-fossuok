@@ -1,29 +1,63 @@
-'use client';
-import { useState } from 'react';
-import useSWR from 'swr';
-import StudentList from '@/components/StudentList';
-import Link from 'next/link';
-import { MagnifyingGlassIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+"use client";
+import { useState } from "react";
+import useSWR from "swr";
+import StudentList from "@/components/StudentList";
+import Link from "next/link";
+import { MagnifyingGlassIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useToast, TOAST_TYPES } from '@/components/ToastContext';
 
-const fetcher = (...args) => fetch(...args).then(res => res.json());
+const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
 export default function Dashboard() {
-  const { data: students } = useSWR('/api/Students', fetcher);
-  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { addToast } = useToast();
+  const [currentWorkshop, setCurrentWorkshop] = useState("students");
+  const [workshops, setWorkshops] = useState([
+    "students",
+    "workshop1",
+    "workshop2",
+    "workshop3",
+    "workshop4",
+  ]);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredStudents = students?.filter(student => {
+  const handleWorkshopChange = (e) => {
+    const workshop = e.target.value;
+    setCurrentWorkshop(workshop);
+
+    // Update URL with the selected workshop
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("workshop", workshop);
+    router.replace(`${pathname}?${params.toString()}`);
+
+    // Show notification
+    addToast(`Switched to ${workshop} workshop`, TOAST_TYPES.INFO);
+  };
+
+  // Fetch students from the selected workshop collection
+  const { data: students } = useSWR(
+    currentWorkshop ? `/api/workshops/${currentWorkshop}/students` : null,
+    fetcher
+  );
+
+  const filteredStudents = students?.filter((student) => {
     // Guard against null/undefined searchTerm
     if (!searchTerm) return true;
-    
+
     const term = searchTerm.toLowerCase();
-    const firstName = student?.firstName?.toLowerCase() || '';
-    const lastName = student?.lastName?.toLowerCase() || '';
-    const email = student?.email?.toLowerCase() || '';
-    
-    return firstName.includes(term) || 
-           lastName.includes(term) || 
-           email.includes(term);
-  });  
+    const firstName = student?.firstName?.toLowerCase() || "";
+    const lastName = student?.lastName?.toLowerCase() || "";
+    const email = student?.email?.toLowerCase() || "";
+
+    return (
+      firstName.includes(term) ||
+      lastName.includes(term) ||
+      email.includes(term)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -31,20 +65,42 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-blue-500 px-6 py-8 md:py-10">
-            <h1 className="text-3xl font-bold text-white">Student Attendance Dashboard</h1>
-            <p className="mt-2 text-indigo-100">Manage student attendance for summit workshops</p>
+            <h1 className="text-3xl font-bold text-white">
+              Student Attendance Dashboard
+            </h1>
+            <p className="mt-2 text-indigo-100">
+              Manage student attendance for summit workshops
+            </p>
           </div>
-          
+
+          {/* Workshop Selector */}
+          <div className="border-b border-indigo-600 bg-indigo-50 px-6 py-5 rounded-lg shadow-md">
+            <label className="block text-sm font-semibold text-indigo-700 mb-2">
+              Select Workshop
+            </label>
+            <select
+              value={currentWorkshop}
+              onChange={handleWorkshopChange}
+              className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-2 border-indigo-600 rounded-lg bg-white text-indigo-900 font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+            >
+              {workshops.map((workshop) => (
+                <option key={workshop} value={workshop} className="font-normal">
+                  {workshop.charAt(0).toUpperCase() + workshop.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Action Bar */}
           <div className="border-b border-gray-200 px-6 py-4 bg-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <Link 
-              href="/addStudent" 
+            <Link
+              href={`/addStudent?workshop=${currentWorkshop}`}
               className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-medium rounded-lg shadow-sm hover:from-indigo-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:-translate-y-0.5"
             >
               <UserPlusIcon className="h-5 w-5 mr-2" />
               Add New Student
             </Link>
-            
+
             <div className="relative rounded-md shadow-sm max-w-md w-full">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -58,7 +114,7 @@ export default function Dashboard() {
               />
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="px-6 py-6">
             {!students ? (
@@ -67,14 +123,31 @@ export default function Dashboard() {
               </div>
             ) : students.length === 0 ? (
               <div className="text-center py-16">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
-                <p className="mt-1 text-sm text-gray-500">Get started by adding a new student.</p>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No students found in this workshop
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Get started by adding a new student.
+                </p>
               </div>
             ) : (
-              <StudentList students={filteredStudents} />
+              <StudentList
+                students={filteredStudents}
+                workshop={currentWorkshop}
+              />
             )}
           </div>
         </div>

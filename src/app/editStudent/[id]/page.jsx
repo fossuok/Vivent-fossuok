@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { ArrowLeftIcon, CheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
@@ -11,7 +11,9 @@ const fetcher = (...args) => fetch(...args).then((res) => res.json());
 export default function EditStudentPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { data: student, error } = useSWR(`/api/Students/${id}`, fetcher);
+  const searchParams = useSearchParams();
+  const workshop = searchParams.get('workshop') || 'students';
+  const { data: student, error } = useSWR(`/api/workshops/${workshop}/students/${id}`, fetcher);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -42,7 +44,7 @@ export default function EditStudentPage() {
   const confirmUpdate = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/Students/${id}`, {
+      const response = await fetch(`/api/workshops/${workshop}/students/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -55,7 +57,7 @@ export default function EditStudentPage() {
       });
 
       if (response.ok) {
-        router.push("/dashboard");
+        router.push(`/dashboard?workshop=${workshop}`);
       }
     } catch (error) {
       console.error("Error updating student:", error);
