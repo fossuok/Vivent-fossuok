@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { ArrowLeftIcon, CheckIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -57,7 +57,7 @@ export default function EditStudentPage() {
       });
 
       if (response.ok) {
-        router.push(`/dashboard?workshop=${workshop}`);
+        router.push(`/dashboard/students?workshop=${workshop}`);
       }
     } catch (error) {
       console.error("Error updating student:", error);
@@ -67,43 +67,43 @@ export default function EditStudentPage() {
 
   if (error) 
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <div className="text-red-500 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+            <div className="text-red-500 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Failed to load student</h2>
+            <p className="text-gray-600 mb-4">Unable to retrieve student information.</p>
           </div>
-          <h2 className="text-xl font-semibold mb-2">Failed to load student</h2>
-          <p className="text-gray-600 mb-4">Unable to retrieve student information.</p>
-          <Link href="/dashboard" className="text-indigo-600 hover:text-indigo-800 font-medium">
-            Return to Dashboard
-          </Link>
         </div>
-      </div>
+      </DashboardLayout>
     );
     
   if (!student) 
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      </DashboardLayout>
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="flex items-center p-4 border-b border-gray-200">
-            <Link 
-              href="/dashboard" 
-              className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
-            </Link>
-            <h2 className="text-xl font-semibold text-gray-800">Edit Student</h2>
-          </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
+          <h1 className="text-2xl font-bold text-white">Edit Student</h1>
+          <p className="mt-1 text-indigo-100">
+            Update student information for {workshop.charAt(0).toUpperCase() + workshop.slice(1)} workshop
+          </p>
+        </div>
 
+        {/* Form Card */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Personal Information Section */}
@@ -216,7 +216,7 @@ export default function EditStudentPage() {
             <div className="mt-8 flex justify-end">
               <button
                 type="button"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push(`/students?workshop=${workshop}`)}
                 className="mr-4 px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
               >
                 Cancel
@@ -256,6 +256,6 @@ export default function EditStudentPage() {
         onConfirm={confirmUpdate}
         onCancel={() => setConfirmOpen(false)}
       />
-    </div>
+    </DashboardLayout>
   );
 }
