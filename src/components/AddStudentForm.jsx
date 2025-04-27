@@ -55,7 +55,7 @@ export default function AddStudentForm({ onAdd }) {
     <div className="bg-white rounded-xl shadow-md overflow-hidden">
       <div className="flex items-center p-4 border-b border-gray-200">
         <Link 
-          href="/dashboard" 
+          href="/students" 
           className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
         >
           <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
