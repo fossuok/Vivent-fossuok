@@ -1,87 +1,70 @@
 'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { useToast, TOAST_TYPES } from '@/components/ToastContext';
+import { useEffect, useState } from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
+import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 
 export default function EmailLogsPage() {
-  const { addToast } = useToast();
   const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
-  
-  useEffect(() => {
-    async function fetchLogs() {
-      try {
-        const response = await fetch('/api/email-logs');
-        const data = await response.json();
-        setLogs(data.logs || []);
-      } catch (error) {
-        console.error('Error fetching logs:', error);
-        addToast('Failed to load email logs', TOAST_TYPES.ERROR);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchLogs();
-    
-    // Poll for updates every 5 seconds if there are in-progress campaigns
-    const hasInProgress = logs.some(log => log.status === 'pending' || log.status === 'in_progress');
-    
-    if (hasInProgress) {
-      const interval = setInterval(fetchLogs, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [logs]);
-  
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
-        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Pending</span>;
-      case 'in_progress':
-        return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">In Progress</span>;
-      case 'completed':
-        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Completed</span>;
-      case 'failed':
-        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Failed</span>;
-      default:
-        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
+  const [error, setError] = useState(null);
+
+  // Fetch logs when button is clicked
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/email-logs');
+      const data = await response.json();
+      setLogs(data.logs || []);
+    } catch (err) {
+      setError('Failed to fetch logs');
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  // Fetch logs on initial render
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
-              </Link>
-              <h2 className="text-xl font-semibold text-gray-800">Email Campaign Logs</h2>
-            </div>
-            <Link 
-              href="/send-email" 
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
-            >
-              New Campaign
-            </Link>
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center">
+              <ClipboardDocumentListIcon className="h-7 w-7 mr-2" />
+              Email Campaign Logs
+            </h1>
+            <p className="mt-1 text-indigo-100">
+              View the status and results of your email campaigns
+            </p>
           </div>
-          
-          {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-          ) : logs.length === 0 ? (
-            <div className="text-center py-16">
-              <ClockIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No email campaigns found</h3>
-              <p className="mt-1 text-sm text-gray-500">Start a new campaign to see logs here.</p>
-            </div>
-          ) : (
-            <div className="p-6">
+          <button
+            onClick={fetchLogs}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Logs'}
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          {error && (
+            <div className="text-center text-red-600 py-4">{error}</div>
+          )}
+
+          <div className="p-6">
+            {logs.length === 0 ? (
+              <div className="text-center text-gray-500">
+                No logs loaded. Click <span className="font-semibold">Refresh Logs</span> to load.
+              </div>
+            ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Logs List */}
                 <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-[600px]">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Campaigns</h3>
                   <div className="space-y-3">
@@ -98,16 +81,13 @@ export default function EmailLogsPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-medium text-gray-900">
-                              {log.workshop.charAt(0).toUpperCase() + log.workshop.slice(1)} Campaign
+                              {log.workshop?.charAt(0).toUpperCase() + log.workshop?.slice(1) || 'Campaign'}
                             </p>
                             <p className="text-sm text-gray-500">From: {log.senderName} ({log.senderEmail})</p>
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs text-gray-500 mb-1">
-                              {new Date(log.startedAt).toLocaleString()}
-                            </span>
-                            {getStatusBadge(log.status)}
-                          </div>
+                          <span className="text-xs text-gray-500">
+                            {log.startedAt ? new Date(log.startedAt).toLocaleString() : ''}
+                          </span>
                         </div>
                         <div className="mt-2 flex space-x-4">
                           <span className="text-sm text-green-600">
@@ -127,18 +107,30 @@ export default function EmailLogsPage() {
                             ></div>
                           </div>
                         )}
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                            log.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : log.status === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {log.status?.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
                 
+                {/* Selected Log Details */}
                 {selectedLog && (
                   <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-[600px]">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Campaign Details</h3>
                     <div className="mb-4">
                       <p className="text-sm text-gray-500">Workshop: <span className="font-medium text-gray-900">{selectedLog.workshop}</span></p>
                       <p className="text-sm text-gray-500">Sender: <span className="font-medium text-gray-900">{selectedLog.senderName} ({selectedLog.senderEmail})</span></p>
-                      <p className="text-sm text-gray-500">Started: <span className="font-medium text-gray-900">{new Date(selectedLog.startedAt).toLocaleString()}</span></p>
+                      <p className="text-sm text-gray-500">Started: <span className="font-medium text-gray-900">{selectedLog.startedAt ? new Date(selectedLog.startedAt).toLocaleString() : ''}</span></p>
                       {selectedLog.completedAt && (
                         <p className="text-sm text-gray-500">Completed: <span className="font-medium text-gray-900">{new Date(selectedLog.completedAt).toLocaleString()}</span></p>
                       )}
@@ -147,7 +139,6 @@ export default function EmailLogsPage() {
                       <p className="text-sm text-gray-500">Successful: <span className="font-medium text-green-600">{selectedLog.successCount}</span></p>
                       <p className="text-sm text-gray-500">Failed: <span className="font-medium text-red-600">{selectedLog.failedCount}</span></p>
                     </div>
-                    
                     {selectedLog.failedRecipients && selectedLog.failedRecipients.length > 0 && (
                       <div>
                         <h4 className="font-medium text-gray-900 mb-2">Failed Recipients</h4>
@@ -174,10 +165,10 @@ export default function EmailLogsPage() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
