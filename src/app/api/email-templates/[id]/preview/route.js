@@ -6,7 +6,7 @@ import dbConnect from '@/lib/db';
 export async function GET(request, { params }) {
   try {
     await dbConnect();
-    const { id } = params;
+    const { id } = await params;
     
     const template = await EmailTemplate.findById(id);
     
@@ -18,7 +18,9 @@ export async function GET(request, { params }) {
     let previewHtml = template.html
       .replace(/{{firstName}}/g, 'John')
       .replace(/{{lastName}}/g, 'Doe')
-      .replace(/{{email}}/g, 'john.doe@example.com');
+      .replace(/{{email}}/g, 'john.doe@example.com')
+      .replace(/{{phone}}/g, '077xxx-xxxx')
+      .replace(/{{studentId}}/g, 'CS/20XX/XXX');
     
     return NextResponse.json({ html: previewHtml });
     

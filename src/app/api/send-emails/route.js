@@ -9,112 +9,82 @@ import Mailjet from 'node-mailjet';
 export async function POST(request) {
   try {
     await dbConnect();
-    
-    const { templateId, workshop, senderName, senderEmail } = await request.json();
-    
-    if (!templateId || !workshop || !senderName || !senderEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+
+    const { templateId, workshop, senderName, senderEmail, studentIds } = await request.json();
+
+    if (!templateId || !workshop || !senderName || !senderEmail || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return NextResponse.json({ error: 'Missing required fields or studentIds' }, { status: 400 });
     }
-    
+
     // Get template
     const template = await EmailTemplate.findById(templateId);
     if (!template) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
-    
-    // Get recipients from selected workshop
+
+    // Get only the students with the given IDs
     const StudentModel = getStudentModel(workshop);
-    const students = await StudentModel.find({});
-    
+    const students = await StudentModel.find({ _id: { $in: studentIds } });
+
     if (students.length === 0) {
-      return NextResponse.json({ error: 'No recipients found in selected workshop' }, { status: 400 });
+      return NextResponse.json({ error: 'No recipients found for provided student IDs' }, { status: 400 });
     }
-    
-    // Create email log
+
+    // Create or update email log (one log per batch)
     const emailLog = await EmailLog.create({
       templateId,
       workshop,
       senderName,
       senderEmail,
       recipientCount: students.length,
-      status: 'pending'
+      status: 'in_progress'
     });
-    
-    // Start email sending process (in background)
-    sendEmails(emailLog._id, template, students, senderName, senderEmail);
-    
-    return NextResponse.json({ 
-      success: true, 
-      logId: emailLog._id,
-      recipientCount: students.length
-    });
-    
-  } catch (error) {
-    console.error('Email sending error:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Failed to start email campaign' 
-    }, { status: 500 });
-  }
-}
 
-// Function to send emails in the background
-async function sendEmails(logId, template, students, senderName, senderEmail) {
-  try {
-    await dbConnect();
-    
-    // Update log status
-    await EmailLog.findByIdAndUpdate(logId, { status: 'in_progress' });
-    
+
+    // Send emails in batches of 10
+    const batchSize = 10;
+    let successCount = 0;
+    let failedCount = 0;
+    const failedRecipients = [];
+
     // Initialize Mailjet
     const mailjet = Mailjet.apiConnect(
       process.env.MJ_APIKEY_PUBLIC,
       process.env.MJ_APIKEY_PRIVATE
     );
-    
-    let successCount = 0;
-    let failedCount = 0;
-    const failedRecipients = [];
-    
-    // Process in batches of 50 to avoid rate limits
-    const batchSize = 50;
+
+    // Helper to replace all placeholders in the template with student data
+    function personalizeHtml(html, student) {
+      return Object.keys(student.toObject()).reduce((acc, key) => {
+        if (['_id', '__v', 'attended'].includes(key)) return acc;
+        const value = student[key] ?? '';
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        return acc.replace(regex, value);
+      }, html);
+    }
+
+    // Process in batches
     for (let i = 0; i < students.length; i += batchSize) {
       const batch = students.slice(i, i + batchSize);
-      
-      // Prepare recipients for this batch
+
+      // Prepare messages for this batch
       const messages = batch.map(student => {
-        // Replace placeholders in template
-        const personalizedHtml = template.html
-          .replace(/{{firstName}}/g, student.firstName || '')
-          .replace(/{{lastName}}/g, student.lastName || '')
-          .replace(/{{email}}/g, student.email || '');
-        
+        const personalizedHtml = personalizeHtml(template.html, student);
         return {
-          From: {
-            Email: senderEmail,
-            Name: senderName
-          },
-          To: [
-            {
-              Email: student.email,
-              Name: `${student.firstName} ${student.lastName}`
-            }
-          ],
+          From: { Email: senderEmail, Name: senderName },
+          To: [{ Email: student.email, Name: `${student.firstName} ${student.lastName}` }],
           Subject: template.subject,
           HTMLPart: personalizedHtml
         };
       });
-      
+
       try {
-        // Send emails via Mailjet
         await mailjet
           .post('send', { version: 'v3.1' })
-          .request({
-            Messages: messages
-          });
-        
+          .request({ Messages: messages });
+
         successCount += batch.length;
       } catch (error) {
-        // Handle failures
         failedCount += batch.length;
         batch.forEach(student => {
           failedRecipients.push({
@@ -123,31 +93,39 @@ async function sendEmails(logId, template, students, senderName, senderEmail) {
           });
         });
       }
-      
-      // Update log with progress
-      await EmailLog.findByIdAndUpdate(logId, {
+
+      // Update log after each batch
+      await EmailLog.findByIdAndUpdate(emailLog._id, {
         successCount,
         failedCount,
         failedRecipients
       });
-      
+
       // Delay between batches to avoid rate limits
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
-    // Update log status to completed
-    await EmailLog.findByIdAndUpdate(logId, {
-      status: 'completed',
-      completedAt: new Date()
+
+    // Final log update
+    await EmailLog.findByIdAndUpdate(emailLog._id, {
+      status: failedCount === 0 ? 'completed' : 'failed',
+      completedAt: new Date(),
+      successCount,
+      failedCount,
+      failedRecipients
     });
-    
+
+    return NextResponse.json({
+      success: true,
+      logId: emailLog._id,
+      recipientCount: students.length,
+      successCount,
+      failedCount
+    });
+
   } catch (error) {
-    console.error('Background email sending error:', error);
-    
-    // Update log status to failed
-    await EmailLog.findByIdAndUpdate(logId, {
-      status: 'failed',
-      completedAt: new Date()
-    });
+    console.error('Email sending error:', error);
+    return NextResponse.json({
+      error: error.message || 'Failed to send emails'
+    }, { status: 500 });
   }
 }
