@@ -17,6 +17,7 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import { useToast, TOAST_TYPES } from '@/components/ToastContext';
+import { NAVIGATIONS } from '@/data/data';
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -24,19 +25,6 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const dispatch = useDispatch();
   const { addToast } = useToast();
-
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Students', href: '/students', icon: UserIcon },
-    { name: 'Add Student', href: '/addStudent', icon: UserPlusIcon },
-    { name: 'Bulk Import', href: '/bulkUpload', icon: DocumentArrowUpIcon },
-    { name: 'Import Logs', href: '/importLogs', icon: ClipboardDocumentListIcon },
-    { name: 'Email Campaign', href: '/EmailCampaign', icon: PaperAirplaneIcon },
-    { name: 'Email Templates', href: '/Email', icon: DocumentTextIcon },
-    { name: 'Email Logs', href: '/dashboard', icon: ClipboardDocumentListIcon },
-    { name: 'Analytics', href: '/Analytics', icon: ChartBarIcon },
-    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
-  ];
 
   const isActive = (path) => {
     return pathname === path || pathname.startsWith(`${path}/`);
@@ -71,7 +59,7 @@ export default function DashboardLayout({ children }) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1">
-            {navigation.map((item) => (
+            {NAVIGATIONS.map((item) => (
               <li key={item.name}>
                 <Link
                   href={item.href}

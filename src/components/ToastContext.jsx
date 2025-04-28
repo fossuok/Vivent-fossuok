@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create context
 const ToastContext = createContext();
@@ -17,7 +18,7 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = TOAST_TYPES.INFO, duration = 3000) => {
-    const id = Date.now();
+    const id = uuidv4();
     setToasts(prev => [...prev, { id, message, type }]);
     
     // Auto-remove toast after duration

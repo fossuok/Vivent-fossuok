@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { v4 as uuidv4 } from 'uuid';
 
 
 export default function AddStudentForm({ onAdd }) {
@@ -26,12 +27,17 @@ export default function AddStudentForm({ onAdd }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    // generate a unique ticket ID using UUID.
+    const ticketId = uuidv4();
+    const formDataWithTicketId = { ...formData, ticketId };
+
     try {
       // Use the workshop-specific endpoint
       await fetch(`/api/workshops/${workshop}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formDataWithTicketId),
       });
       onAdd();
       setFormData({
@@ -181,7 +187,7 @@ export default function AddStudentForm({ onAdd }) {
                   required
                 />
               </div>
-              <div>
+              {/* <div>
                 <label htmlFor="ticketId" className="block text-sm font-medium text-gray-700 mb-1">
                   Ticket ID
                 </label>
@@ -196,7 +202,7 @@ export default function AddStudentForm({ onAdd }) {
                   }
                   required
                 />
-              </div>
+              </div> */}
             </div>
           </div>
 
