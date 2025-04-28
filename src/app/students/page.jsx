@@ -1,4 +1,3 @@
-// src/app/dashboard/students/page.jsx
 "use client";
 import { useState } from "react";
 import useSWR from "swr";
@@ -12,30 +11,29 @@ import {
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast, TOAST_TYPES } from "@/components/ToastContext";
 import DashboardLayout from "@/components/DashboardLayout";
+import { EVENTS } from "@/data/data";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
+
+const PAGE_SIZE = 15; // Students per page
 
 export default function StudentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { addToast } = useToast();
-  
-  // Get workshop from URL or use default
+
+  // Workshop selection
   const urlWorkshop = searchParams.get('workshop');
   const [currentWorkshop, setCurrentWorkshop] = useState(urlWorkshop || "students");
-  const [workshops, setWorkshops] = useState([
-    "students",
-    "workshop1",
-    "workshop2",
-    "workshop3",
-    "workshop4",
-  ]);
+  const [workshops] = useState(EVENTS);
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
 
   const handleWorkshopChange = (e) => {
     const workshop = e.target.value;
     setCurrentWorkshop(workshop);
+    setPage(1); // Reset to first page on workshop change
 
     // Update URL with the selected workshop
     const params = new URLSearchParams(searchParams.toString());
@@ -46,27 +44,45 @@ export default function StudentsPage() {
     addToast(`Switched to ${workshop} workshop`, TOAST_TYPES.INFO);
   };
 
-  // Fetch students from the selected workshop collection
+  // Fetch all students for the selected workshop
   const { data: students, error } = useSWR(
     currentWorkshop ? `/api/workshops/${currentWorkshop}/students` : null,
     fetcher
   );
 
+  // Filter students by search term
   const filteredStudents = students?.filter((student) => {
-    // Guard against null/undefined searchTerm
     if (!searchTerm) return true;
-
     const term = searchTerm.toLowerCase();
     const firstName = student?.firstName?.toLowerCase() || "";
     const lastName = student?.lastName?.toLowerCase() || "";
     const email = student?.email?.toLowerCase() || "";
-
     return (
       firstName.includes(term) ||
       lastName.includes(term) ||
       email.includes(term)
     );
-  });
+  }) || [];
+
+  // Pagination calculations
+  const totalStudents = filteredStudents.length;
+  const totalPages = Math.ceil(totalStudents / PAGE_SIZE);
+  const paginatedStudents = filteredStudents.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE
+  );
+
+  // Handle page change
+  const goToPage = (p) => {
+    if (p < 1 || p > totalPages) return;
+    setPage(p);
+  };
+
+  // Reset to first page when search term changes
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
 
   return (
     <DashboardLayout>
@@ -126,7 +142,7 @@ export default function StudentsPage() {
                 placeholder="Search by name or email..."
                 className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearch}
               />
             </div>
           </div>
@@ -144,7 +160,7 @@ export default function StudentsPage() {
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
-          ) : students.length === 0 ? (
+          ) : totalStudents === 0 ? (
             <div className="text-center py-16">
               <svg
                 className="mx-auto h-12 w-12 text-gray-400"
@@ -167,10 +183,47 @@ export default function StudentsPage() {
               </p>
             </div>
           ) : (
-            <StudentList
-              students={filteredStudents}
-              workshop={currentWorkshop}
-            />
+            <>
+              <StudentList
+                students={paginatedStudents}
+                workshop={currentWorkshop}
+              />
+              {/* Pagination Controls */}
+              <div className="flex justify-between items-center px-6 py-4 border-t">
+                <span className="text-sm text-gray-600">
+                  Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalStudents)} of {totalStudents} students
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page === 1}
+                    className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  {[...Array(totalPages)].map((_, idx) => (
+                    <button
+                      key={idx + 1}
+                      onClick={() => goToPage(idx + 1)}
+                      className={`px-3 py-1 rounded ${
+                        page === idx + 1
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page === totalPages}
+                    className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

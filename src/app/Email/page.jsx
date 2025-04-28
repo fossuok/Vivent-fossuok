@@ -45,7 +45,7 @@ export default function EmailTemplatePage() {
       
       if (response.ok) {
         addToast('Email template uploaded successfully', TOAST_TYPES.SUCCESS);
-        router.push('/email-templates');
+        router.push('/emailCampaign');
       } else {
         addToast(result.error || 'Failed to upload template', TOAST_TYPES.ERROR);
       }
