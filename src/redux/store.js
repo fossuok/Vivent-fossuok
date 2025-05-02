@@ -9,7 +9,7 @@ import eventReducer from './slices/eventSlice';
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth'] // only auth will be persisted
+  whitelist: ['auth', 'event'] // only auth will be persisted
 };
 
 const rootReducer = combineReducers({
