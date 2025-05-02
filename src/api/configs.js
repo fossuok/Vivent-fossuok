@@ -1,3 +1,5 @@
+import { create } from "domain";
+
 export const BASE_URL = process.env.NEXT_PUBLIC_URL;
 
 export const API_URL_CONFIG = {
@@ -9,4 +11,5 @@ export const API_URL_CONFIG = {
     getSingleParticipant: `${BASE_URL}/events/`,
     updateParticipant: `${BASE_URL}/events/`,
     deleteParticipant: `${BASE_URL}/events/`,
+    createParticipant: `${BASE_URL}/events/`,
 } 

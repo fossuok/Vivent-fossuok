@@ -1,21 +1,21 @@
 'use client';
-import AddStudentForm from '@/components/AddStudentForm';
+import AddStudentForm from '@/components/AddParticipantForm';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 
 export default function AddStudentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workshop = searchParams.get('workshop') || 'default';
+  const event = searchParams.get('event') || 'default';
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
-          <h1 className="text-2xl font-bold text-white">Add New Student</h1>
+          <h1 className="text-2xl font-bold text-white">Add New Participant</h1>
           <p className="mt-1 text-indigo-100">
-            Add a student to the {workshop.charAt(0).toUpperCase() + workshop.slice(1)} workshop
+            Add a participant to the event
           </p>
         </div>
         
@@ -33,15 +33,15 @@ export default function AddStudentPage() {
             
             {/* Form Component */}
             <AddStudentForm
-              workshop={workshop}
+              event={event}
               onAdd={() => {
-                router.push(`/students?workshop=${workshop}`);
+                router.push(`/participants?event=${event}`);
               }}
             />
             
             {/* Footer Element */}
             <div className="mt-8 text-center text-sm text-gray-500">
-              <p>All student data is securely stored and managed according to our privacy policy.</p>
+              <p>All participant data is securely stored and managed according to our privacy policy.</p>
             </div>
           </div>
         </div>

@@ -2,15 +2,19 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { useToast, TOAST_TYPES } from "@/components/ToastContext";
 import Link from "next/link";
 import { v4 as uuidv4 } from 'uuid';
+import { API_URL_CONFIG } from "@/api/configs";
 
 
-export default function AddStudentForm({ onAdd }) {
+export default function AddParticipantForm({ onAdd }) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workshop = searchParams.get('workshop') || 'students';
+  const event = searchParams.get('event') || 'students';
+
+  const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -20,6 +24,7 @@ export default function AddStudentForm({ onAdd }) {
     studentId: "",
     linkedin: "",
     ticketId: "",
+    nic: "",
     attended: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,12 +38,25 @@ export default function AddStudentForm({ onAdd }) {
     const formDataWithTicketId = { ...formData, ticketId };
 
     try {
+      const eventID = parseInt(event, 10);
+      const url = API_URL_CONFIG.createParticipant + `${eventID}/participants`;
       // Use the workshop-specific endpoint
-      await fetch(`/api/workshops/${workshop}/students`, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formDataWithTicketId),
       });
+
+      if (response.status == 400) {
+        addToast("Participant Email Already Exists", TOAST_TYPES.ERROR);
+        return;
+      }
+
+      if (!response.ok) {
+        addToast("Failed to add participant", TOAST_TYPES.ERROR);
+        throw new Error("Failed to add participant");
+      }
+
       onAdd();
       setFormData({
         firstName: "",
@@ -48,6 +66,7 @@ export default function AddStudentForm({ onAdd }) {
         studentId: "",
         linkedin: "",
         ticketId: "",
+        nic: "",
         attended: false,
       });
     } catch (error) {
@@ -61,12 +80,12 @@ export default function AddStudentForm({ onAdd }) {
     <div className="bg-white rounded-xl shadow-md overflow-hidden">
       <div className="flex items-center p-4 border-b border-gray-200">
         <Link 
-          href="/students" 
+          href="/participants" 
           className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
         >
           <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
         </Link>
-        <h2 className="text-xl font-semibold text-gray-800">Add New Student</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Add New Participant</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6">
@@ -183,6 +202,22 @@ export default function AddStudentForm({ onAdd }) {
                   value={formData.studentId}
                   onChange={(e) =>
                     setFormData({ ...formData, studentId: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 mb-1">
+                  NIC
+                </label>
+                <input
+                  id="nic"
+                  type="text"
+                  placeholder="Enter participant NIC"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  value={formData.nic}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nic: e.target.value })
                   }
                   required
                 />
