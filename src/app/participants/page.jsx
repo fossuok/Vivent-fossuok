@@ -1,7 +1,6 @@
 "use client";
-import { useState } from "react";
-import useSWR from "swr";
-import StudentList from "@/components/StudentList";
+import { useState, useEffect } from "react";
+import ParticipantList from "@/components/ParticipantList";
 import Link from "next/link";
 import {
   DocumentArrowUpIcon,
@@ -11,66 +10,112 @@ import {
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast, TOAST_TYPES } from "@/components/ToastContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { EVENTS } from "@/data/data";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchEvents } from "@/redux/slices/eventSlice";
+import { API_URL_CONFIG } from "@/api/configs";
 
-const fetcher = (...args) => fetch(...args).then((res) => res.json());
+const PAGE_SIZE = 15; // Participants per page
 
-const PAGE_SIZE = 15; // Students per page
-
-export default function StudentsPage() {
+export default function ParticipantsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { addToast } = useToast();
+  const dispatch = useDispatch();
+  const { events } = useSelector((state) => state.event);
 
-  // Workshop selection
-  const urlWorkshop = searchParams.get('workshop');
-  const [currentWorkshop, setCurrentWorkshop] = useState(urlWorkshop || "students");
-  const [workshops] = useState(EVENTS);
+  // State variables
+  const [currentEvent, setCurrentEvent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [participants, setParticipants] = useState([]);
+  const [totalParticipants, setTotalParticipants] = useState(0);
+  const [paginatedParticipants, setPaginatedParticipants] = useState([]);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
 
-  const handleWorkshopChange = (e) => {
-    const workshop = e.target.value;
-    setCurrentWorkshop(workshop);
-    setPage(1); // Reset to first page on workshop change
+  // Fetch all events on component mount
+  useEffect(() => {
+    dispatch(fetchEvents());
+  }, [dispatch]);
 
-    // Update URL with the selected workshop
+  // Fetch participants for the selected event
+  const fetchParticipants = async (event) => {
+    if (!event) return; // Do nothing if no event is selected
+
+    const eventId = parseInt(event.id, 10);
+    const url = API_URL_CONFIG.getParticipants + `${eventId}/participants`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (!response.ok) {
+      setError("Failed to fetch participants");
+      addToast("Failed to fetch participants", TOAST_TYPES.ERROR);
+      return;
+    }
+
+    const data = await response.json();
+    setParticipants(data);
+  };
+
+  // Fetch participants when the current event changes
+  useEffect(() => {
+    fetchParticipants(currentEvent);
+  }, [currentEvent]);
+
+  // Handle event selection
+  const handleEventChange = (e) => {
+    const eventId = e.target.value;
+    if (!eventId) {
+      setCurrentEvent(null);
+      setParticipants([]);
+      setPage(1);
+      return;
+    }
+
+    const selectedEvent = events.find((event) => event.id === parseInt(eventId, 10));
+    setCurrentEvent(selectedEvent);
+    fetchParticipants(selectedEvent);
+    setPage(1); // Reset to first page on event change
+
+    // Update URL with the selected event
     const params = new URLSearchParams(searchParams.toString());
-    params.set("workshop", workshop);
+    params.set("event", selectedEvent.id);
     router.replace(`${pathname}?${params.toString()}`);
 
     // Show notification
-    addToast(`Switched to ${workshop} workshop`, TOAST_TYPES.INFO);
+    addToast(`Switched to ${selectedEvent.title} event`, TOAST_TYPES.INFO);
   };
 
-  // Fetch all students for the selected workshop
-  const { data: students, error } = useSWR(
-    currentWorkshop ? `/api/workshops/${currentWorkshop}/students` : null,
-    fetcher
-  );
+  // Filter and paginate participants
+  useEffect(() => {
+    const filteredParticipants =
+      participants?.filter((participant) => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        const firstName = participant?.firstName?.toLowerCase() || "";
+        const lastName = participant?.lastName?.toLowerCase() || "";
+        const email = participant?.email?.toLowerCase() || "";
+        return (
+          firstName.includes(term) ||
+          lastName.includes(term) ||
+          email.includes(term)
+        );
+      }) || [];
 
-  // Filter students by search term
-  const filteredStudents = students?.filter((student) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    const firstName = student?.firstName?.toLowerCase() || "";
-    const lastName = student?.lastName?.toLowerCase() || "";
-    const email = student?.email?.toLowerCase() || "";
-    return (
-      firstName.includes(term) ||
-      lastName.includes(term) ||
-      email.includes(term)
+    setTotalParticipants(filteredParticipants.length);
+    const updatedPaginated = filteredParticipants.slice(
+      (page - 1) * PAGE_SIZE,
+      page * PAGE_SIZE
     );
-  }) || [];
 
-  // Pagination calculations
-  const totalStudents = filteredStudents.length;
-  const totalPages = Math.ceil(totalStudents / PAGE_SIZE);
-  const paginatedStudents = filteredStudents.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
+    setPaginatedParticipants(updatedPaginated);
+  }, [participants, page, searchTerm]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalParticipants / PAGE_SIZE);
 
   // Handle page change
   const goToPage = (p) => {
@@ -84,30 +129,41 @@ export default function StudentsPage() {
     setPage(1);
   };
 
+  // Function to update participants attendance status
+  const updateParticipants = (updatedParticipants) => {
+    setParticipants(updatedParticipants); // Update the full participants list
+    const updatedPaginated = updatedParticipants.slice(
+      (page - 1) * PAGE_SIZE,
+      page * PAGE_SIZE
+    );
+    setPaginatedParticipants(updatedPaginated); // Update the paginated list
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
-          <h1 className="text-2xl font-bold text-white">Student Management</h1>
+          <h1 className="text-2xl font-bold text-white">Participant Management</h1>
           <p className="mt-1 text-indigo-100">
-            Manage students and attendance for workshops
+            Manage participants and attendance for Events
           </p>
         </div>
 
-        {/* Workshop Selector */}
+        {/* Event Selector */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <label className="block text-sm font-semibold text-indigo-700 mb-2">
-            Select Workshop
+            Select Event
           </label>
           <select
-            value={currentWorkshop}
-            onChange={handleWorkshopChange}
+            value={currentEvent?.id || ""}
+            onChange={handleEventChange}
             className="w-full md:w-1/3 px-3 py-2 border-2 border-indigo-300 rounded-lg bg-white text-indigo-900 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
           >
-            {workshops.map((workshop) => (
-              <option key={workshop} value={workshop}>
-                {workshop.charAt(0).toUpperCase() + workshop.slice(1)}
+            <option value="">Select an event</option>
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.title}
               </option>
             ))}
           </select>
@@ -118,15 +174,19 @@ export default function StudentsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-wrap gap-3">
               <Link
-                href={`/addStudent?workshop=${currentWorkshop}`}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                href={`/addParticipant?event=${currentEvent?.id || ""}`}
+                className={`inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${
+                  !currentEvent ? "opacity-50 pointer-events-none" : ""
+                }`}
               >
                 <UserPlusIcon className="h-5 w-5 mr-2" />
-                Add Student
+                Add Participant
               </Link>
               <Link
-                href={`/bulkUpload?workshop=${currentWorkshop}`}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white font-medium rounded-lg shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                href={`/bulkUpload?event=${currentEvent?.id || ""}`}
+                className={`inline-flex items-center px-4 py-2 bg-purple-600 text-white font-medium rounded-lg shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors ${
+                  !currentEvent ? "opacity-50 pointer-events-none" : ""
+                }`}
               >
                 <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
                 Bulk Import
@@ -143,24 +203,25 @@ export default function StudentsPage() {
                 className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                 value={searchTerm}
                 onChange={handleSearch}
+                disabled={!currentEvent}
               />
             </div>
           </div>
         </div>
 
-        {/* Student List */}
+        {/* Participant List */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {error ? (
             <div className="p-6 text-center">
               <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-                Failed to load students. Please try again.
+                Failed to load participants. Please try again.
               </div>
             </div>
-          ) : !students ? (
+          ) : !participants ? (
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
-          ) : totalStudents === 0 ? (
+          ) : totalParticipants === 0 ? (
             <div className="text-center py-16">
               <svg
                 className="mx-auto h-12 w-12 text-gray-400"
@@ -176,22 +237,25 @@ export default function StudentsPage() {
                 />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No students found in this workshop
+                No participants found in this event
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Get started by adding a new student.
+                Get started by adding a new participant.
               </p>
             </div>
           ) : (
             <>
-              <StudentList
-                students={paginatedStudents}
-                workshop={currentWorkshop}
+              <ParticipantList
+                participants={paginatedParticipants}
+                event={currentEvent}
+                updateParticipants={updateParticipants}
               />
               {/* Pagination Controls */}
               <div className="flex justify-between items-center px-6 py-4 border-t">
                 <span className="text-sm text-gray-600">
-                  Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalStudents)} of {totalStudents} students
+                  Showing {(page - 1) * PAGE_SIZE + 1} -{" "}
+                  {Math.min(page * PAGE_SIZE, totalParticipants)} of {totalParticipants}{" "}
+                  Participants
                 </span>
                 <div className="flex gap-2">
                   <button

@@ -16,7 +16,7 @@ export const EXCLUDE_FIELDS = ["_id", "attended", "__v"];
 
 export const NAVIGATIONS = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { name: "Students", href: "/students", icon: UserIcon },
+  { name: "Participants", href: "/participants", icon: UserIcon },
   { name: "Add Student", href: "/addStudent", icon: UserPlusIcon },
   { name: "Bulk Import", href: "/bulkUpload", icon: DocumentArrowUpIcon },
   { name: "Import Logs", href: "/importLogs", icon: ClipboardDocumentListIcon },
