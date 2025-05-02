@@ -6,4 +6,7 @@ export const API_URL_CONFIG = {
     getParticipants: `${BASE_URL}/events/`,
     getEvents: `${BASE_URL}/events/`,
     markPresent: `${BASE_URL}/events/`,
+    getSingleParticipant: `${BASE_URL}/events/`,
+    updateParticipant: `${BASE_URL}/events/`,
+    deleteParticipant: `${BASE_URL}/events/`,
 } 

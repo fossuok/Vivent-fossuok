@@ -1,40 +1,69 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import useSWR from "swr";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import DashboardLayout from "@/components/DashboardLayout";
+import { API_URL_CONFIG } from "@/api/configs";
 
-const fetcher = (...args) => fetch(...args).then((res) => res.json());
-
-export default function EditStudentPage() {
+export default function EditParticipantPage() {
   const { id } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workshop = searchParams.get('workshop') || 'students';
-  const { data: student, error } = useSWR(`/api/workshops/${workshop}/students/${id}`, fetcher);
+  const eventID = searchParams.get('event');
+  const [participant, setParticipant] = useState([]);
+  const [error, setError] = useState(null);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     phone: "",
     linkedin: "",
     studentId: "",
+    nic: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+
+  // Fetch selected participant for the selected event
+  const fetchParticipants = async (event) => {
+    const eventId = parseInt(event, 10);
+    const url = API_URL_CONFIG.getSingleParticipant + `${eventId}/participants/${id}`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      setError("Failed to fetch participant");
+      addToast("Failed to fetch participants", TOAST_TYPES.ERROR);
+      return;
+    }
+
+    const data = await response.json();
+    setParticipant(data);
+  };
+
   useEffect(() => {
-    if (student) {
+    fetchParticipants(eventID);
+  }, [eventID]);
+
+
+  useEffect(() => {
+    if (participant) {
       setFormData({
-        firstName: student.firstName || "",
-        lastName: student.lastName || "",
-        phone: student.phone || "",
-        linkedin: student.linkedin || "",
-        studentId: student.studentId || "",
+        firstName: participant.firstName || "",
+        lastName: participant.lastName || "",
+        phone: participant.phone || "",
+        linkedin: participant.linkedin || "",
+        studentId: participant.studentId || "",
+        nic: participant.nic || "",
       });
     }
-  }, [student]);
+  }, [participant]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -44,7 +73,8 @@ export default function EditStudentPage() {
   const confirmUpdate = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/workshops/${workshop}/students/${id}`, {
+      const url = API_URL_CONFIG.getSingleParticipant + `${parseInt(eventID)}/participants/${id}`;
+      const response = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -53,11 +83,13 @@ export default function EditStudentPage() {
           phone: formData.phone,
           linkedin: formData.linkedin,
           studentId: formData.studentId,
+          attended: participant.attended,
+          nic: formData.nic,
         }),
       });
 
       if (response.ok) {
-        router.push(`/dashboard/students?workshop=${workshop}`);
+        router.push(`/participants?event=${eventID}`);
       }
     } catch (error) {
       console.error("Error updating student:", error);
@@ -75,14 +107,14 @@ export default function EditStudentPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold mb-2">Failed to load student</h2>
-            <p className="text-gray-600 mb-4">Unable to retrieve student information.</p>
+            <h2 className="text-xl font-semibold mb-2">Failed to load participant</h2>
+            <p className="text-gray-600 mb-4">Unable to retrieve participant information.</p>
           </div>
         </div>
       </DashboardLayout>
     );
     
-  if (!student) 
+  if (!participant) 
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
@@ -96,9 +128,9 @@ export default function EditStudentPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
-          <h1 className="text-2xl font-bold text-white">Edit Student</h1>
+          <h1 className="text-2xl font-bold text-white">Edit Participant</h1>
           <p className="mt-1 text-indigo-100">
-            Update student information for {workshop.charAt(0).toUpperCase() + workshop.slice(1)} workshop
+            {/* Update participant information for {workshop.charAt(0).toUpperCase() + workshop.slice(1)} event */}
           </p>
         </div>
 
@@ -188,11 +220,13 @@ export default function EditStudentPage() {
                 </div>
               </div>
 
-              {/* Identification */}
+
+              {/* Identification Section */}
               <div className="md:col-span-2">
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
                   Identification
                 </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 mb-1">
                     Student ID
@@ -209,14 +243,32 @@ export default function EditStudentPage() {
                     required
                   />
                 </div>
+                  <div>
+                    <label htmlFor="nic" className="block text-sm font-medium text-gray-700 mb-1">
+                      NIC
+                    </label>
+                    <input
+                      id="nic"
+                      type="text"
+                      placeholder="linkedin.com/in/username"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      value={formData.nic}
+                      onChange={(e) =>
+                        setFormData({ ...formData, nic: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+
 
             {/* Submit Button */}
             <div className="mt-8 flex justify-end">
               <button
                 type="button"
-                onClick={() => router.push(`/students?workshop=${workshop}`)}
+                onClick={() => router.push(`/participants?event=${eventID}`)}
                 className="mr-4 px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
               >
                 Cancel
