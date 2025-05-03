@@ -1,7 +1,6 @@
-// src/redux/slices/authSlice.js
+// src/redux/slices/eventSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 import { API_URL_CONFIG } from "@/api/configs";
-import { get } from "http";
 
 // sample event data
 const sampleEvents = [
@@ -65,7 +64,6 @@ export const fetchEvents = () => async (dispatch, getState) => {
       });
   
       if (response.status === 404) {
-        console.log("Events not found, using sample data");
         return;
       }
   
@@ -86,3 +84,22 @@ export const fetchEvents = () => async (dispatch, getState) => {
       console.error("Error fetching events:", error);
     }
   };
+
+export const deleteEvent = (eventId) => async (dispatch) => {
+  try {
+    const response = await fetch(API_URL_CONFIG.deleteEvent + `${eventId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete event");
+    }
+
+    dispatch(removeEvent(eventId));
+  } catch (error) {
+    console.error("Error deleting event:", error);
+  }
+};
