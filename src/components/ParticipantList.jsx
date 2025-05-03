@@ -186,7 +186,7 @@ export default function ParticipantList({
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex space-x-2">
                     <Link
-                      href={`/editParticipant/${participant.id}?event=${event.id}`}
+                      href={`/editParticipant/${participant.id}?event=${event?.id}`}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                     >
                       <PencilIcon className="h-3.5 w-3.5 mr-1" />

@@ -14,10 +14,12 @@ export const EVENTS = ["workshop1", "workshop2", "workshop3", "workshop4"];
 
 export const EXCLUDE_FIELDS = ["_id", "attended", "__v"];
 
+export const REQUIRED_COLUMNS_FROM_CSV = ['firstName', 'lastName', 'email', 'phone', 'studentId', 'linkedin', "nic", "attended"];
+
 export const NAVIGATIONS = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
   { name: "Participants", href: "/participants", icon: UserIcon },
-  { name: "Add Student", href: "/addStudent", icon: UserPlusIcon },
+  { name: "Add Participant", href: "/addParticipant", icon: UserPlusIcon },
   { name: "Bulk Import", href: "/bulkUpload", icon: DocumentArrowUpIcon },
   { name: "Import Logs", href: "/importLogs", icon: ClipboardDocumentListIcon },
   { name: "Email Campaign", href: "/EmailCampaign", icon: PaperAirplaneIcon },

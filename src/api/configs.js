@@ -12,4 +12,5 @@ export const API_URL_CONFIG = {
     updateParticipant: `${BASE_URL}/events/`,
     deleteParticipant: `${BASE_URL}/events/`,
     createParticipant: `${BASE_URL}/events/`,
+    uploadCSV: `${BASE_URL}/upload/events/`,
 } 

@@ -32,6 +32,7 @@ export default function ParticipantsPage() {
   const [paginatedParticipants, setPaginatedParticipants] = useState([]);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch all events on component mount
   useEffect(() => {
@@ -41,23 +42,44 @@ export default function ParticipantsPage() {
   // Fetch participants for the selected event
   const fetchParticipants = async (event) => {
     if (!event) return; // Do nothing if no event is selected
+    
+    setIsLoading(true);
+    setError(null);
 
-    const eventId = parseInt(event.id, 10);
-    const url = API_URL_CONFIG.getParticipants + `${eventId}/participants`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!response.ok) {
+    try {
+      const eventId = parseInt(event.id);
+      const url = API_URL_CONFIG.getParticipants + `${eventId}/participants`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 404) {
+        setParticipants([]);
+        setError(null);
+        addToast("No participants found for this event", TOAST_TYPES.WARNING);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setError("Failed to fetch participants");
+        addToast("Failed to fetch participants", TOAST_TYPES.ERROR);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setParticipants(data);
+      setError(null);
+    } catch (err) {
       setError("Failed to fetch participants");
       addToast("Failed to fetch participants", TOAST_TYPES.ERROR);
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    setParticipants(data);
   };
 
   // Fetch participants when the current event changes
@@ -68,18 +90,20 @@ export default function ParticipantsPage() {
   // Handle event selection
   const handleEventChange = (e) => {
     const eventId = e.target.value;
+    
+    // Clear previous state
+    setParticipants([]);
+    setError(null);
+    setPage(1);
+    
     if (!eventId) {
       setCurrentEvent(null);
-      setParticipants([]);
-      setPage(1);
       return;
     }
 
     const selectedEvent = events.find((event) => event.id === parseInt(eventId, 10));
     setCurrentEvent(selectedEvent);
-    fetchParticipants(selectedEvent);
-    setPage(1); // Reset to first page on event change
-
+    
     // Update URL with the selected event
     const params = new URLSearchParams(searchParams.toString());
     params.set("event", selectedEvent.id);
@@ -217,7 +241,7 @@ export default function ParticipantsPage() {
                 Failed to load participants. Please try again.
               </div>
             </div>
-          ) : !participants ? (
+          ) : isLoading ? (
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>

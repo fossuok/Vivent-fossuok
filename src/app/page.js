@@ -37,7 +37,7 @@ export default function Home() {
             />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Summit Attendance System</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Event Management System</h1>
         <p className="text-gray-600 mb-6">Redirecting...</p>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
