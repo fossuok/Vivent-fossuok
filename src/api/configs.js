@@ -6,6 +6,7 @@ export const API_URL_CONFIG = {
     getParticipants: `${BASE_URL}/events/`,
     getEvents: `${BASE_URL}/events/`,
     createEvent: `${BASE_URL}/events/`,
+    deleteEvent: `${BASE_URL}/events/`,
     markPresent: `${BASE_URL}/events/`,
     getSingleParticipant: `${BASE_URL}/events/`,
     updateParticipant: `${BASE_URL}/events/`,
@@ -14,4 +15,9 @@ export const API_URL_CONFIG = {
     uploadCSV: `${BASE_URL}/upload/events/`,
     getImportLogs: `${BASE_URL}/upload/upload-logs`,
     clearImportLogs: `${BASE_URL}/upload/clear-logs`,
+    sendEmails: `${BASE_URL}/send-emails/`,
+    getTemplates: `${BASE_URL}/events/`,
+    deleteTemplate: `${BASE_URL}/events/`,
+    getEmailLogs: `${BASE_URL}/email-logs/?skip=0&limit=100`,
+    deleteEmailLogs: `${BASE_URL}/email-logs/delete-logs`,
 } 
