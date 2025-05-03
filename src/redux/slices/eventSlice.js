@@ -47,10 +47,13 @@ const eventSlice = createSlice({
       const eventId = action.payload;
       state.events = state.events.filter((event) => event.id !== eventId);
     },
+    resetEvents(state) {
+      state.events = [];
+    }
   },
 });
 
-export const { getEvents, addEvent, removeEvent } = eventSlice.actions;
+export const { getEvents, addEvent, removeEvent, resetEvents } = eventSlice.actions;
 export default eventSlice.reducer;
 
 // Thunk for fetching events from the API
