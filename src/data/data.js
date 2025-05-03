@@ -18,6 +18,7 @@ export const REQUIRED_COLUMNS_FROM_CSV = ['firstName', 'lastName', 'email', 'pho
 
 export const NAVIGATIONS = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { name: "Create Event", href: "/createEvent", icon: UserPlusIcon },
   { name: "Participants", href: "/participants", icon: UserIcon },
   { name: "Add Participant", href: "/addParticipant", icon: UserPlusIcon },
   { name: "Bulk Import", href: "/bulkUpload", icon: DocumentArrowUpIcon },
@@ -25,6 +26,6 @@ export const NAVIGATIONS = [
   { name: "Email Campaign", href: "/EmailCampaign", icon: PaperAirplaneIcon },
   { name: "Email Templates", href: "/Email", icon: DocumentTextIcon },
   { name: "Email Logs", href: "/EmailLogs", icon: ClipboardDocumentListIcon },
-  { name: "Analytics", href: "/Analytics", icon: ChartBarIcon },
+  // { name: "Analytics", href: "/Analytics", icon: ChartBarIcon },
   { name: "Settings", href: "/settings", icon: Cog6ToothIcon },
 ];
