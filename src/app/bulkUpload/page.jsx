@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { useToast, TOAST_TYPES } from '@/components/ToastContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { API_URL_CONFIG } from '@/api/configs';
-import { parse } from 'path';
 
 export default function BulkUploadPage() {
   const router = useRouter();
@@ -65,10 +64,11 @@ export default function BulkUploadPage() {
       
       const result = await response.json();
       console.log('Upload result:', result);
+      setUploadResult(result);
       
       if (response.ok) {
         setUploadResult(result);
-        addToast(`Successfully imported ${result.imported} students (${result.skipped} skipped)`, TOAST_TYPES.SUCCESS);
+        addToast(`Successfully imported ${result.added_users} students (${result.failed_users} skipped)`, TOAST_TYPES.SUCCESS);
       } else {
         addToast('Failed to upload CSV', TOAST_TYPES.ERROR);
       }
@@ -145,7 +145,7 @@ export default function BulkUploadPage() {
                     <p className="pl-1">or drag and drop</p>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Required CSV headers: firstName, lastName, email, phone, studentId, linkedin
+                    Required CSV headers: firstName, lastName, email, phone
                   </p>
                   <p className="text-xs text-gray-500">
                     (Ticket IDs will be automatically generated)
@@ -166,14 +166,14 @@ export default function BulkUploadPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-green-50 p-3 rounded-md border border-green-200">
                     <p className="text-sm font-medium text-green-800">Successfully Imported</p>
-                    <p className="text-2xl font-bold text-green-600">{uploadResult.imported}</p>
+                    <p className="text-2xl font-bold text-green-600">{uploadResult.added_users}</p>
                   </div>
                   <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
                     <p className="text-sm font-medium text-amber-800">Skipped Entries</p>
-                    <p className="text-2xl font-bold text-amber-600">{uploadResult.skipped}</p>
+                    <p className="text-2xl font-bold text-amber-600">{uploadResult.failed_users}</p>
                   </div>
                 </div>
-                {uploadResult.skipped > 0 && (
+                {uploadResult.failed_users > 0 && (
                   <div className="mt-2 text-sm text-gray-600">
                     <p>Some entries were skipped due to missing or invalid data.</p>
                     <Link 
