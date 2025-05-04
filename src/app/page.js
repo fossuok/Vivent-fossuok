@@ -1,6 +1,6 @@
 // src/app/page.jsx
 "use client";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchEvents } from "@/redux/slices/eventSlice";
@@ -9,6 +9,7 @@ export default function Home() {
   const router = useRouter();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch all events on component mount
   useEffect(() => {
@@ -16,12 +17,19 @@ export default function Home() {
   }, [dispatch]);
 
   useEffect(() => {
-    // If authenticated, go to dashboard, otherwise to login
-    if (isAuthenticated) {
-      router.push("/dashboard");
-    } else {
-      router.push("/Login");
-    }
+    // Add a delay before redirecting
+    const redirectTimer = setTimeout(() => {
+      // If authenticated, go to dashboard, otherwise to login
+      if (isAuthenticated) {
+        router.push("/dashboard");
+      } else {
+        router.push("/Login");
+      }
+      setIsLoading(false);
+    }, 3000); // 3 seconds delay
+
+    // Cleanup function to clear the timeout if component unmounts
+    return () => clearTimeout(redirectTimer);
   }, [isAuthenticated, router]);
 
   // Show loading state while redirecting
@@ -47,7 +55,7 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Event Management System
         </h1>
-        <p className="text-gray-600 mb-6">Redirecting...</p>
+        <p className="text-gray-600 mb-6">Loading...</p>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
         </div>
