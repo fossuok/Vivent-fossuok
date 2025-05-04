@@ -13,9 +13,6 @@ A comprehensive event management system for tracking attendance, managing partic
 - **Dashboard Analytics**: View attendance statistics and event metrics
 - **Modern UI**: Clean, responsive interface with real-time notifications
 
-## Video
-[![Watch the video](https://github.com/PinsaraPerera/Vivent/blob/dev/resources/login.png)](https://github.com/PinsaraPerera/Vivent/blob/dev/resources/vivent.mp4)
-
 ## Screenshots
 
 ### Login
