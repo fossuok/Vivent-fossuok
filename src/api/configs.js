@@ -20,4 +20,5 @@ export const API_URL_CONFIG = {
     deleteTemplate: `${BASE_URL}/events/`,
     getEmailLogs: `${BASE_URL}/email-logs/?skip=0&limit=100`,
     deleteEmailLogs: `${BASE_URL}/email-logs/delete-logs`,
+    createEmailTemplate: `${BASE_URL}/events/`,
 } 

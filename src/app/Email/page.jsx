@@ -1,51 +1,102 @@
+// src/app/Email/page.jsx
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DocumentArrowUpIcon } from '@heroicons/react/24/outline';
+import { useSelector, useDispatch } from 'react-redux';
+import { DocumentArrowUpIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useToast, TOAST_TYPES } from '@/components/ToastContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { API_URL_CONFIG } from '@/api/configs';
+import { fetchTemplates, deleteTemplate } from '@/redux/slices/templateSlice';
 
 export default function EmailTemplatePage() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const { addToast } = useToast();
   const [file, setFile] = useState(null);
+  const [fileContent, setFileContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateSubject, setTemplateSubject] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState('');
+
+  const { events } = useSelector((state) => state.event);
+  const { templates } = useSelector((state) => state.template);
+
+  // Fetch templates when selected event changes
+  useEffect(() => {
+    if (selectedEvent) {
+      dispatch(fetchTemplates(selectedEvent));
+    }
+  }, [selectedEvent, dispatch]);
 
   const handleFileChange = (e) => {
     if (e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      
+      // Read the file content
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFileContent(event.target.result);
+      };
+      reader.readAsText(selectedFile);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!selectedEvent) {
+      addToast('Please select an event first', TOAST_TYPES.WARNING);
+      return;
+    }
+    
+    try {
+      dispatch(deleteTemplate(templateId, selectedEvent));
+      addToast('Template deleted successfully', TOAST_TYPES.SUCCESS);
+    } catch (error) {
+      addToast('Error deleting template', TOAST_TYPES.ERROR);
     }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
     
-    if (!file || !templateName || !templateSubject) {
-      addToast('Please fill all required fields', TOAST_TYPES.WARNING);
+    if (!fileContent || !templateName || !templateSubject || !selectedEvent) {
+      addToast('Please fill all required fields and select an event', TOAST_TYPES.WARNING);
       return;
     }
     
     setUploading(true);
     
-    const formData = new FormData();
-    formData.append('htmlFile', file);
-    formData.append('name', templateName);
-    formData.append('subject', templateSubject);
+    // Create the request body in the format expected by the backend
+    const templateData = {
+      body: fileContent,
+      emailSubject: templateSubject,
+      templateName: templateName
+    };
     
     try {
-      const response = await fetch('/api/email-templates', {
+      const url = API_URL_CONFIG.createEmailTemplate + `${selectedEvent}/email-templates`;
+      const response = await fetch(url, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(templateData),
       });
       
       const result = await response.json();
       
       if (response.ok) {
         addToast('Email template uploaded successfully', TOAST_TYPES.SUCCESS);
-        router.push('/emailCampaign');
+        // Refresh templates
+        dispatch(fetchTemplates(selectedEvent));
+        // Reset form
+        setFile(null);
+        setFileContent('');
+        setTemplateName('');
+        setTemplateSubject('');
       } else {
         addToast(result.error || 'Failed to upload template', TOAST_TYPES.ERROR);
       }
@@ -58,12 +109,31 @@ export default function EmailTemplatePage() {
 
   return (
     <DashboardLayout>
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">Upload Email Template</h2>
         </div>
 
         <form onSubmit={handleUpload} className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Event
+            </label>
+            <select
+              value={selectedEvent}
+              onChange={(e) => setSelectedEvent(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              required
+            >
+              <option value="">Select an event</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Template Name
@@ -118,7 +188,7 @@ export default function EmailTemplatePage() {
                   HTML file with your email template
                 </p>
                 <p className="text-xs text-gray-500">
-                  Use firstName, lastName, etc. for personalization
+                  {`Use {{firstName}}, {{lastName}}, etc. for personalization`}
                 </p>
               </div>
             </div>
@@ -138,7 +208,7 @@ export default function EmailTemplatePage() {
             </Link>
             <button
               type="submit"
-              disabled={uploading || !file}
+              disabled={uploading || !file || !selectedEvent}
               className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
               {uploading ? (
@@ -156,6 +226,60 @@ export default function EmailTemplatePage() {
           </div>
         </form>
       </div>
+
+      {/* Templates List Section */}
+      {selectedEvent && templates.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800">Existing Templates</h2>
+          </div>
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Template Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email Subject
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created At
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {templates.map((template) => (
+                    <tr key={template.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {template.templateName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {template.emailSubject}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(template.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

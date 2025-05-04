@@ -245,8 +245,8 @@ export default function EmailLogsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                               {selectedLog.failed_recipient_ids.map((recipient, index) => (
                                 <tr key={index}>
-                                  <td className="px-3 py-2 text-sm text-gray-900">{recipient}</td>
-                                  <td className="px-3 py-2 text-sm text-red-600">Failed to send</td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">{recipient.email}</td>
+                                  <td className="px-3 py-2 text-sm text-red-600">{recipient.error}</td>
                                 </tr>
                               ))}
                             </tbody>
