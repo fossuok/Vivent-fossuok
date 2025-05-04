@@ -1,0 +1,65 @@
+name: Vivent
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.PROJECT_ID }}
+  REGION:  ${{ secrets.REGION }}
+  REPO_NAME: vivent
+
+jobs:
+  build-and-deploy:
+    name: Setup, Build, and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Authenticate with Google Cloud
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_ACCOUNT }}
+
+      # Setup gcloud CLI/SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: "latest"
+
+      - name: Authorize Docker to push to Google Container Registry
+        run: gcloud auth configure-docker
+
+      # Create .env file with environment variables
+      - name: Create .env file
+        run: |
+          echo NEXT_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_URL }} >> .env
+          echo MJ_APIKEY_PUBLIC=${{ secrets.MJ_APIKEY_PUBLIC }} >> .env
+          echo MJ_APIKEY_PRIVATE=${{ secrets.MJ_APIKEY_PRIVATE }} >> .env
+
+      # Build and tag the docker image
+      - name: Build Docker image
+        run: |
+          docker build . --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}:${{ github.sha }}
+
+      # Push the image to the Google Container Registry (GCR)
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}:${{ github.sha }}
+
+      # Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.REPO_NAME }} \
+            --region ${{ env.REGION }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}:${{ github.sha }} \
+            --platform "managed" \
+            --allow-unauthenticated \
+            --set-env-vars MJ_APIKEY_PUBLIC=${{ secrets.MJ_APIKEY_PUBLIC }},MJ_APIKEY_PRIVATE=${{ secrets.MJ_APIKEY_PRIVATE }} \
+            --port 80 \
+            --quiet
