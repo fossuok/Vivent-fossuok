@@ -8,6 +8,7 @@ import path from 'path';
 import csv from 'csvtojson';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureTempDir } from '@/lib/fileUtil';
+import { REQUIRED_COLUMNS_FROM_CSV } from '@/data/data';
 
 // Required columns in the CSV
 const REQUIRED_COLUMNS = ['firstName', 'lastName', 'email', 'phone', 'studentId', 'linkedin'];

@@ -1,21 +1,35 @@
 'use client';
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
 import { DocumentArrowUpIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useToast, TOAST_TYPES } from '@/components/ToastContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { API_URL_CONFIG } from '@/api/configs';
 
 export default function BulkUploadPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const urlWorkshop = searchParams.get('workshop');
   const { addToast } = useToast();
+  const { events } = useSelector((state) => state.event);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [workshop, setWorkshop] = useState(urlWorkshop || 'workshop1');
-  const [workshops] = useState(['workshop1', 'workshop2', 'workshop3', 'workshop4']);
+  const [event, setEvent] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
+
+  const handleEventChange = (e) => {
+    const eventId = e.target.value;
+    if (!eventId) {
+      setEvent(null);
+      return;
+    }
+
+    const selectedEvent = events.find((event) => event.id === parseInt(eventId, 10));
+    setEvent(selectedEvent);
+
+    // Show notification
+    addToast(`Switched to ${selectedEvent.title} event`, TOAST_TYPES.INFO);
+  }
 
   const handleFileChange = (e) => {
     if (e.target.files[0]) {
@@ -35,21 +49,28 @@ export default function BulkUploadPage() {
     setUploading(true);
     
     const formData = new FormData();
-    formData.append('csvFile', file);
+    formData.append('file', file);
     
     try {
-      const response = await fetch(`/api/upload-csv/${workshop}`, {
+      const eventId = parseInt(event.id);
+      const url = API_URL_CONFIG.uploadCSV + `${eventId}`;
+      const response = await fetch(url, {
         method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
         body: formData,
       });
       
       const result = await response.json();
+      console.log('Upload result:', result);
+      setUploadResult(result);
       
       if (response.ok) {
         setUploadResult(result);
-        addToast(`Successfully imported ${result.imported} students (${result.skipped} skipped)`, TOAST_TYPES.SUCCESS);
+        addToast(`Successfully imported ${result.added_users} students (${result.failed_users} skipped)`, TOAST_TYPES.SUCCESS);
       } else {
-        addToast(result.error || 'Failed to upload CSV', TOAST_TYPES.ERROR);
+        addToast('Failed to upload CSV', TOAST_TYPES.ERROR);
       }
     } catch (error) {
       addToast('Error uploading CSV file', TOAST_TYPES.ERROR);
@@ -64,9 +85,9 @@ export default function BulkUploadPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
-          <h1 className="text-2xl font-bold text-white">Bulk Import Students</h1>
+          <h1 className="text-2xl font-bold text-white">Bulk Import Participants</h1>
           <p className="mt-1 text-indigo-100">
-            Upload CSV files to add multiple students at once
+            Upload CSV files to add multiple participants at once
           </p>
         </div>
 
@@ -85,16 +106,17 @@ export default function BulkUploadPage() {
           <form onSubmit={handleUpload} className="p-6">
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Workshop Collection
+                Select Event Collection
               </label>
               <select
-                value={workshop}
-                onChange={(e) => setWorkshop(e.target.value)}
+                value={event?.id || ""}
+                onChange={handleEventChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               >
-                {workshops.map((w) => (
-                  <option key={w} value={w}>
-                    {w.charAt(0).toUpperCase() + w.slice(1)}
+                <option value="">Select an event</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title}
                   </option>
                 ))}
               </select>
@@ -123,7 +145,7 @@ export default function BulkUploadPage() {
                     <p className="pl-1">or drag and drop</p>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Required CSV headers: firstName, lastName, email, phone, studentId, linkedin
+                    Required CSV headers: firstName, lastName, email, phone
                   </p>
                   <p className="text-xs text-gray-500">
                     (Ticket IDs will be automatically generated)
@@ -144,14 +166,14 @@ export default function BulkUploadPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-green-50 p-3 rounded-md border border-green-200">
                     <p className="text-sm font-medium text-green-800">Successfully Imported</p>
-                    <p className="text-2xl font-bold text-green-600">{uploadResult.imported}</p>
+                    <p className="text-2xl font-bold text-green-600">{uploadResult.added_users}</p>
                   </div>
                   <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
                     <p className="text-sm font-medium text-amber-800">Skipped Entries</p>
-                    <p className="text-2xl font-bold text-amber-600">{uploadResult.skipped}</p>
+                    <p className="text-2xl font-bold text-amber-600">{uploadResult.failed_users}</p>
                   </div>
                 </div>
-                {uploadResult.skipped > 0 && (
+                {uploadResult.failed_users > 0 && (
                   <div className="mt-2 text-sm text-gray-600">
                     <p>Some entries were skipped due to missing or invalid data.</p>
                     <Link 
@@ -174,7 +196,7 @@ export default function BulkUploadPage() {
               </Link>
               <button
                 type="submit"
-                disabled={uploading || !file}
+                disabled={uploading || !file || !event}
                 className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 {uploading ? (

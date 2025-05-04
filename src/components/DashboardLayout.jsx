@@ -18,6 +18,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useToast, TOAST_TYPES } from '@/components/ToastContext';
 import { NAVIGATIONS } from '@/data/data';
+import { resetTemplates } from '@/redux/slices/templateSlice';
+import { resetEvents } from '@/redux/slices/eventSlice';
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,6 +35,8 @@ export default function DashboardLayout({ children }) {
   const handleLogout = () => {
     // Dispatch logout action to clear Redux state
     dispatch(logout());
+    dispatch(resetTemplates())
+    dispatch(resetEvents())
     
     // Show success message
     addToast('You have been successfully logged out', TOAST_TYPES.SUCCESS);

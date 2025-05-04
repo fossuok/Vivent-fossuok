@@ -1,20 +1,28 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { PaperAirplaneIcon, ClipboardIcon } from "@heroicons/react/24/outline";
+import { PaperAirplaneIcon, ClipboardIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useToast, TOAST_TYPES } from "@/components/ToastContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCopyToClipboard } from "@uidotdev/usehooks";
-import { EVENTS, EXCLUDE_FIELDS } from "@/data/data";
+import { useSelector, useDispatch } from "react-redux";
+import { API_URL_CONFIG } from "@/api/configs";
+import { fetchTemplates, resetTemplates } from "@/redux/slices/templateSlice";
 
 export default function EmailCampaignPage() {
   const router = useRouter();
   const { addToast } = useToast();
-  const [templates, setTemplates] = useState([]);
-  const [workshops, setWorkshops] = useState(EVENTS);
-  const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [selectedWorkshop, setSelectedWorkshop] = useState("");
+  const dispatch = useDispatch();
+
+  // Redux state for events and templates
+  const { events } = useSelector((state) => state.event);
+  const { templates } = useSelector((state) => state.template);
+  const { token } = useSelector((state) => state.auth);
+
+  // State variables
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,87 +30,146 @@ export default function EmailCampaignPage() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  // Student selection state
-  const [students, setStudents] = useState([]);
-  const [templateVariables, setTemplateVariables] = useState([]);
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  // Participant selection state
+  const [participants, setParticipants] = useState([]);
+  const [availablePlaceholders, setAvailablePlaceholders] = useState([]);
+  const [templatePlaceholders, setTemplatePlaceholders] = useState([]);
+  const [selectedPlaceholders, setSelectedPlaceholders] = useState([]);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
   // Copy to clipboard
   const [copiedText, copy] = useCopyToClipboard();
 
-  // Fetch templates on mount
+  // Fetch templates when event changes
   useEffect(() => {
-    async function fetchTemplates() {
-      try {
-        const response = await fetch("/api/email-templates");
-        const data = await response.json();
-        setTemplates(data.templates || []);
-      } catch (error) {
-        addToast("Failed to load email templates", TOAST_TYPES.ERROR);
-      }
+    if (selectedEvent) {
+      dispatch(resetTemplates());
+      dispatch(fetchTemplates(selectedEvent));
     }
-    fetchTemplates();
-  }, [addToast]);
+  }, [dispatch, selectedEvent]);
 
-  // Fetch students when workshop changes
+  // Extract placeholders from template body when template changes
   useEffect(() => {
-    if (!selectedWorkshop) {
-      setStudents([]);
-      setTemplateVariables([]);
+    if (!selectedTemplate) return;
+    
+    const regex = /\{\{([^}]+)\}\}/g;
+    const matches = [...selectedTemplate.body.matchAll(regex)];
+    const placeholders = matches.map(match => match[1]);
+    
+    // Remove duplicates
+    setTemplatePlaceholders([...new Set(placeholders)]);
+  }, [selectedTemplate]);
+
+  // Set available placeholders based on participant fields
+  useEffect(() => {
+    if (participants.length > 0) {
+      // Get all possible fields from the first participant
+      const sampleParticipant = participants[0];
+      const fields = Object.keys(sampleParticipant);
+      setAvailablePlaceholders(fields);
+    }
+  }, [participants]);
+
+  // Update selected template when ID changes
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = templates.find(t => t.id === parseInt(selectedTemplateId));
+      setSelectedTemplate(template);
+    } else {
+      setSelectedTemplate(null);
+      setTemplatePlaceholders([]);
+    }
+  }, [selectedTemplateId, templates]);
+
+  // Fetch participants function
+  const fetchParticipants = async () => {
+    if (!selectedEvent) return;
+    
+    setLoading(true);
+    try {
+      const eventId = parseInt(selectedEvent);
+      const url = API_URL_CONFIG.getParticipants + `${eventId}/participants`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 404) {
+        setParticipants([]);
+        addToast("No participants found for this event", TOAST_TYPES.WARNING);
+        setLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        addToast("Failed to fetch participants", TOAST_TYPES.ERROR);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setParticipants(data);
+    } catch (error) {
+      addToast("Error loading participants", TOAST_TYPES.ERROR);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch participants when event changes
+  useEffect(() => {
+    if (!selectedEvent) {
+      setParticipants([]);
+      setSelectedParticipantIds([]);
+      setSelectedTemplateId("");
       return;
     }
-    setLoading(true);
-    fetch(`/api/workshops/${selectedWorkshop}/students`)
-      .then((res) => res.json())
-      .then((data) => {
-        setStudents(data || []);
-        // Dynamically extract variable fields from the first student
-        if (data && data.length > 0) {
-          const fields = Object.keys(data[0]).filter(
-            (key) => !EXCLUDE_FIELDS.includes(key)
-          );
-          setTemplateVariables(fields);
-        } else {
-          setTemplateVariables([]);
-        }
-        setSelectedStudentIds([]);
-        setSelectAll(false);
-      })
-      .catch(() => addToast("Failed to load students", TOAST_TYPES.ERROR))
-      .finally(() => setLoading(false));
-  }, [selectedWorkshop, addToast]);
+    fetchParticipants();
+  }, [selectedEvent]);
+
+  // Handle event selection
+  const handleEventChange = (e) => {
+    const eventId = e.target.value;
+    setSelectedEvent(eventId);
+    setSelectedTemplateId("");
+    setSelectedTemplate(null);
+    setSelectedPlaceholders([]);
+  };
 
   // Handle "Select All"
   const handleSelectAll = () => {
     if (selectAll) {
-      setSelectedStudentIds([]);
+      setSelectedParticipantIds([]);
       setSelectAll(false);
     } else {
-      setSelectedStudentIds(students.map((s) => s._id));
+      setSelectedParticipantIds(participants.map(p => p.id));
       setSelectAll(true);
     }
   };
 
   // Handle individual checkbox change
-  const handleCheckboxChange = (studentId) => {
-    if (selectedStudentIds.includes(studentId)) {
-      setSelectedStudentIds((prev) => prev.filter((id) => id !== studentId));
+  const handleCheckboxChange = (participantId) => {
+    if (selectedParticipantIds.includes(participantId)) {
+      setSelectedParticipantIds(prev => prev.filter(id => id !== participantId));
       setSelectAll(false);
     } else {
-      setSelectedStudentIds((prev) => [...prev, studentId]);
-      if (selectedStudentIds.length + 1 === students.length) {
+      setSelectedParticipantIds(prev => [...prev, participantId]);
+      if (selectedParticipantIds.length + 1 === participants.length) {
         setSelectAll(true);
       }
     }
   };
 
-  // Keep selectAll in sync with selectedStudentIds
+  // Keep selectAll in sync with selectedParticipantIds
   useEffect(() => {
     setSelectAll(
-      students.length > 0 && selectedStudentIds.length === students.length
+      participants.length > 0 && 
+      selectedParticipantIds.length === participants.length
     );
-  }, [selectedStudentIds, students]);
+  }, [selectedParticipantIds, participants]);
 
   // Handle preview
   const handlePreview = async () => {
@@ -112,16 +179,9 @@ export default function EmailCampaignPage() {
     }
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/email-templates/${selectedTemplate}/preview`
-      );
-      const data = await response.json();
-      if (response.ok) {
-        setPreviewHtml(data.html);
-        setPreviewMode(true);
-      } else {
-        addToast("Failed to load template preview", TOAST_TYPES.ERROR);
-      }
+      // For now, just show the template body with placeholders
+      setPreviewHtml(selectedTemplate.body.replace(/\n/g, '<br>'));
+      setPreviewMode(true);
     } catch (error) {
       addToast("Error loading preview", TOAST_TYPES.ERROR);
     } finally {
@@ -129,14 +189,26 @@ export default function EmailCampaignPage() {
     }
   };
 
+  // Add placeholder to selected list
+  const handleAddPlaceholder = (placeholder) => {
+    if (!selectedPlaceholders.includes(placeholder)) {
+      setSelectedPlaceholders(prev => [...prev, placeholder]);
+    }
+  };
+
+  // Remove placeholder from selected list
+  const handleRemovePlaceholder = (placeholder) => {
+    setSelectedPlaceholders(prev => prev.filter(p => p !== placeholder));
+  };
+
   // Batch send emails (10 at a time)
   const handleSendEmails = async () => {
-    if (!selectedTemplate || !selectedWorkshop || !senderName || !senderEmail) {
+    if (!selectedTemplate || !selectedEvent || !senderName || !senderEmail) {
       addToast("Please fill all required fields", TOAST_TYPES.WARNING);
       return;
     }
-    if (selectedStudentIds.length === 0) {
-      addToast("Please select at least one student", TOAST_TYPES.WARNING);
+    if (selectedParticipantIds.length === 0) {
+      addToast("Please select at least one participant", TOAST_TYPES.WARNING);
       return;
     }
     setIsSending(true);
@@ -146,32 +218,36 @@ export default function EmailCampaignPage() {
     let sentCount = 0;
     let success = true;
 
-    for (let i = 0; i < selectedStudentIds.length; i += batchSize) {
-      const batch = selectedStudentIds.slice(i, i + batchSize);
+    for (let i = 0; i < selectedParticipantIds.length; i += batchSize) {
+      const batch = selectedParticipantIds.slice(i, i + batchSize);
       try {
-        const response = await fetch("/api/send-emails", {
+        const payload = {
+          event_id: parseInt(selectedEvent),
+          placeholder_var: selectedPlaceholders,
+          recipient_ids: batch,
+          sender_email: senderEmail,
+          sender_name: senderName,
+          template_id: parseInt(selectedTemplateId),
+        };
+
+        const response = await fetch(API_URL_CONFIG.sendEmails, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            templateId: selectedTemplate,
-            workshop: selectedWorkshop,
-            senderName,
-            senderEmail,
-            studentIds: batch,
-          }),
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(payload),
         });
+
         const result = await response.json();
         if (!response.ok) {
-          addToast(
-            "Failed to send a batch of emails",
-            TOAST_TYPES.ERROR
-          );
+          addToast("Failed to send a batch of emails", TOAST_TYPES.ERROR);
           success = false;
           break;
         }
         sentCount += batch.length;
         addToast(
-          `Sent ${sentCount} of ${selectedStudentIds.length} emails`,
+          `Sent ${sentCount} of ${selectedParticipantIds.length} emails`,
           TOAST_TYPES.INFO
         );
       } catch (error) {
@@ -195,32 +271,37 @@ export default function EmailCampaignPage() {
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl px-6 py-6 shadow-md">
           <h1 className="text-2xl font-bold text-white">Email Campaign</h1>
           <p className="mt-1 text-indigo-100">
-            Select recipients and send personalized emails to students in your
-            workshops
+            Select recipients and send personalized emails to participants in
+            your events.
           </p>
         </div>
 
-        {/* Template Variables */}
-        <div className="flex flex-wrap gap-4">
-          {templateVariables.map((field) => (
-            <div
-              key={field}
-              className="flex items-center gap-2 bg-indigo-50 px-3 py-1 rounded text-indigo-800 border border-indigo-200"
-            >
-              <span className="font-mono">{`{{${field}}}`}</span>
-              <button
-                onClick={() => copy(`{{${field}}}`)}
-                className="hover:text-indigo-600 focus:outline-none"
-                title="Copy"
-              >
-                <ClipboardIcon className="h-4 w-4" />
-              </button>
-              {copiedText === `{{${field}}}` && (
-                <span className="text-green-600 text-xs ml-1">Copied!</span>
-              )}
+        {/* Template Placeholders */}
+        {templatePlaceholders.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Template Placeholders</h3>
+            <div className="flex flex-wrap gap-2">
+              {templatePlaceholders.map((field) => (
+                <div
+                  key={field}
+                  className="flex items-center gap-2 bg-indigo-50 px-3 py-1 rounded text-indigo-800 border border-indigo-200"
+                >
+                  <span className="font-mono">{`{{${field}}}`}</span>
+                  <button
+                    onClick={() => copy(`{{${field}}}`)}
+                    className="hover:text-indigo-600 focus:outline-none"
+                    title="Copy"
+                  >
+                    <ClipboardIcon className="h-4 w-4" />
+                  </button>
+                  {copiedText === `{{${field}}}` && (
+                    <span className="text-green-600 text-xs ml-1">Copied!</span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
         {/* Campaign Form */}
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -250,39 +331,87 @@ export default function EmailCampaignPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Email Template
+                      Select Event (Recipients)
                     </label>
                     <select
-                      value={selectedTemplate}
-                      onChange={(e) => setSelectedTemplate(e.target.value)}
+                      value={selectedEvent || ""}
+                      onChange={handleEventChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                      <option value="">Select a template</option>
-                      {templates.map((template) => (
-                        <option key={template._id} value={template._id}>
-                          {template.name}
+                      <option value="">Select an event</option>
+                      {events.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Workshop (Recipients)
+                      Select Email Template
                     </label>
                     <select
-                      value={selectedWorkshop}
-                      onChange={(e) => setSelectedWorkshop(e.target.value)}
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!selectedEvent}
                     >
-                      <option value="">Select a workshop</option>
-                      {workshops.map((workshop) => (
-                        <option key={workshop} value={workshop}>
-                          {workshop.charAt(0).toUpperCase() + workshop.slice(1)}
+                      <option value="">Select a template</option>
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.templateName}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
+                
+                {/* Available Placeholders */}
+                {selectedTemplate && availablePlaceholders.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Available Placeholders (Click to add)
+                    </label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50">
+                      {availablePlaceholders.map((field) => (
+                        <button
+                          key={field}
+                          onClick={() => handleAddPlaceholder(field)}
+                          className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-gray-300 text-sm hover:bg-indigo-50 hover:border-indigo-300"
+                        >
+                          <PlusIcon className="h-3 w-3" />
+                          {field}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Selected Placeholders */}
+                {selectedPlaceholders.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Selected Placeholders
+                    </label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-indigo-50">
+                      {selectedPlaceholders.map((field) => (
+                        <div
+                          key={field}
+                          className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-indigo-200"
+                        >
+                          {field}
+                          <button
+                            onClick={() => handleRemovePlaceholder(field)}
+                            className="text-red-500 hover:text-red-700 ml-1"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -309,7 +438,8 @@ export default function EmailCampaignPage() {
                     />
                   </div>
                 </div>
-                {/* Students Table */}
+                
+                {/* Participant Table */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Recipients
@@ -318,9 +448,9 @@ export default function EmailCampaignPage() {
                     <div className="py-8 flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
                     </div>
-                  ) : students.length === 0 ? (
-                    <div className="text-gray-500 py-6">
-                      No students found for this workshop.
+                  ) : participants.length === 0 ? (
+                    <div className="text-gray-500 py-6 text-center border rounded-lg">
+                      {selectedEvent ? "No participants found for this event." : "Please select an event to view participants."}
                     </div>
                   ) : (
                     <div className="border rounded-lg overflow-x-auto">
@@ -343,23 +473,23 @@ export default function EmailCampaignPage() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {students.map((student) => (
-                            <tr key={student._id}>
+                          {participants.map((participant) => (
+                            <tr key={participant.id}>
                               <td className="px-4 py-2 text-center">
                                 <input
                                   type="checkbox"
-                                  checked={selectedStudentIds.includes(
-                                    student._id
+                                  checked={selectedParticipantIds.includes(
+                                    participant.id
                                   )}
                                   onChange={() =>
-                                    handleCheckboxChange(student._id)
+                                    handleCheckboxChange(participant.id)
                                   }
                                 />
                               </td>
                               <td className="px-4 py-2">
-                                {student.firstName} {student.lastName}
+                                {participant.firstName} {participant.lastName}
                               </td>
-                              <td className="px-4 py-2">{student.email}</td>
+                              <td className="px-4 py-2">{participant.email}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -369,9 +499,9 @@ export default function EmailCampaignPage() {
                   <div className="mt-2 text-sm text-gray-600">
                     Selected:{" "}
                     <span className="font-semibold text-indigo-600">
-                      {selectedStudentIds.length}
+                      {selectedParticipantIds.length}
                     </span>{" "}
-                    / {students.length}
+                    / {participants.length}
                   </div>
                 </div>
                 <div className="flex justify-between pt-4">
@@ -389,10 +519,10 @@ export default function EmailCampaignPage() {
                     disabled={
                       isSending ||
                       !selectedTemplate ||
-                      !selectedWorkshop ||
+                      !selectedEvent ||
                       !senderName ||
                       !senderEmail ||
-                      selectedStudentIds.length === 0
+                      selectedParticipantIds.length === 0
                     }
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                   >

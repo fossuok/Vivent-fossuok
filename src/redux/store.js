@@ -4,15 +4,19 @@ import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { combineReducers } from 'redux';
 import authReducer from './slices/authSlice';
+import eventReducer from './slices/eventSlice';
+import templateReducer from './slices/templateSlice';
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth'] // only auth will be persisted
+  whitelist: ['auth', 'event', 'template'] // only these will be persisted
 };
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  event: eventReducer,
+  template: templateReducer,
   // Add other reducers here as your app grows
 });
 

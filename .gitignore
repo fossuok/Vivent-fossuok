@@ -45,3 +45,6 @@ next-env.d.ts
 *.csv
 *.log
 *.html
+
+# service key
+service_key.json
