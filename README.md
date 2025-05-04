@@ -14,7 +14,10 @@ A comprehensive event management system for tracking attendance, managing partic
 - **Modern UI**: Clean, responsive interface with real-time notifications
 
 ## Video
-![Watch the demo video](./resources/vivent.mp4)
+<video width="600" controls muted>
+  <source src="./resources/vivent.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 ## Screenshots
 
