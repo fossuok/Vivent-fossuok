@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }) {
       <div className={`bg-indigo-800 text-white ${collapsed ? 'w-16' : 'w-64'} transition-all duration-300 flex flex-col`}>
         {/* Logo */}
         <div className="p-4 border-b border-indigo-700 flex items-center justify-between">
-          {!collapsed && <span className="font-bold text-xl">Summit App</span>}
+          {!collapsed && <span className="font-bold text-xl">Vivent</span>}
           <button 
             onClick={() => setCollapsed(!collapsed)} 
             className="p-1 rounded-md hover:bg-indigo-700"
