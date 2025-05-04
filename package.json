@@ -19,6 +19,7 @@
     "node-mailjet": "^6.0.8",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
+    "react-device-detect": "^2.2.3",
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",
     "redux": "^5.0.1",
