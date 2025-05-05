@@ -1,8 +1,12 @@
+import { create } from "domain";
+
 export const BASE_URL = process.env.NEXT_PUBLIC_URL;
 
 export const API_URL_CONFIG = {
     login: `${BASE_URL}/users/login`,
-    getUsers: `${BASE_URL}/users`,
+    getUsers: `${BASE_URL}/users/`,
+    createUser: `${BASE_URL}/users/`,
+    deleteUser: `${BASE_URL}/users/`,
     getParticipants: `${BASE_URL}/events/`,
     getEvents: `${BASE_URL}/events/`,
     createEvent: `${BASE_URL}/events/`,
