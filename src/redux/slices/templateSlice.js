@@ -67,7 +67,6 @@ export const fetchTemplates = (event_id) => async (dispatch, getState) => {
     }
 
     const data = await response.json();
-    console.log("Fetched templates:", data);
     const existingTemplates = getState().template.templates;
 
     data.forEach((element) => {
