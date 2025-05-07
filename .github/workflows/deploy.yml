@@ -1,4 +1,4 @@
-name: Vivent
+name: Vivent-frontend-foss
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 env:
   PROJECT_ID: ${{ secrets.PROJECT_ID }}
   REGION:  ${{ secrets.REGION }}
-  REPO_NAME: vivent
+  REPO_NAME: vivent-frontend-foss
 
 jobs:
   build-and-deploy:
