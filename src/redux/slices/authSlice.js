@@ -21,6 +21,7 @@ const authSlice = createSlice({
     loginSuccess: (state, action) => {
       state.loading = false;
       state.isAuthenticated = true;
+      state.user = action.payload.user;
       state.token = action.payload.token;
     },
     loginFailure: (state, action) => {
@@ -65,6 +66,12 @@ export const login = (credentials) => async (dispatch) => {
 
     dispatch(
       loginSuccess({
+        user: {
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          role: data.role,
+        },
         token: data.access_token,
       })
     );

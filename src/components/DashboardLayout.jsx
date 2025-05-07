@@ -1,9 +1,10 @@
+// src/components/DashboardLayout.jsx
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
-import { logout } from '@/redux/slices/authSlice'; // Import your logout action
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '@/redux/slices/authSlice';
 import {
   UserPlusIcon,
   DocumentArrowUpIcon,
@@ -27,21 +28,18 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const dispatch = useDispatch();
   const { addToast } = useToast();
+  const { user } = useSelector((state) => state.auth);
 
   const isActive = (path) => {
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
   const handleLogout = () => {
-    // Dispatch logout action to clear Redux state
     dispatch(logout());
     dispatch(resetTemplates())
     dispatch(resetEvents())
     
-    // Show success message
     addToast('You have been successfully logged out', TOAST_TYPES.SUCCESS);
-    
-    // Redirect to login page
     router.push('/Login');
   };
 
@@ -83,12 +81,18 @@ export default function DashboardLayout({ children }) {
         
         {/* User Profile */}
         <div className="p-4 border-t border-indigo-700 flex items-center">
-          <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
-            <UserIcon className="h-4 w-4 text-white" />
-          </div>
+          <Link href="/admin-settings">
+            <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center cursor-pointer">
+              <UserIcon className="h-4 w-4 text-white" />
+            </div>
+          </Link>
           {!collapsed ? (
             <div className="ml-3">
-              <p className="text-sm font-medium">Admin User</p>
+              <Link href="/admin-settings">
+                <p className="text-sm font-medium cursor-pointer hover:text-indigo-200">
+                  {user?.username || 'Admin User'}
+                </p>
+              </Link>
               <button 
                 onClick={handleLogout}
                 className="text-xs text-indigo-300 hover:text-white transition-colors cursor-pointer"

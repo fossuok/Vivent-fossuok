@@ -36,7 +36,12 @@ export default function ParticipantsPage() {
 
   // Fetch all events on component mount
   useEffect(() => {
-    dispatch(fetchEvents());
+    try{
+      dispatch(fetchEvents());
+    }catch (error) {
+      console.error("Error fetching events:", error);
+      addToast("Failed to fetch events", TOAST_TYPES.ERROR);
+    }
   }, [dispatch]);
 
   // Fetch participants for the selected event

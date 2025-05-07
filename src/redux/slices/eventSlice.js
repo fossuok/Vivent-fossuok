@@ -88,12 +88,13 @@ export const fetchEvents = () => async (dispatch, getState) => {
     }
   };
 
-export const deleteEvent = (eventId) => async (dispatch) => {
+export const deleteEvent = (eventId, token) => async (dispatch) => {
   try {
     const response = await fetch(API_URL_CONFIG.deleteEvent + `${eventId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
       },
     });
 
