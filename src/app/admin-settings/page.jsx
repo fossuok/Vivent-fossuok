@@ -24,12 +24,12 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState("events");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+
   // Confirmation dialog states
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteType, setDeleteType] = useState(null); // "event" or "user"
-  
+
   const [newUser, setNewUser] = useState({
     active: true,
     username: "",
@@ -109,7 +109,10 @@ export default function AdminSettingsPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: selectedUser.id, username: selectedUser.username }),
+        body: JSON.stringify({
+          id: selectedUser.id,
+          username: selectedUser.username,
+        }),
       });
 
       if (!response.ok) {
@@ -145,7 +148,10 @@ export default function AdminSettingsPage() {
     }
 
     if (newUser.password.length < 8) {
-      addToast("Password must be at least 8 characters long", TOAST_TYPES.WARNING);
+      addToast(
+        "Password must be at least 8 characters long",
+        TOAST_TYPES.WARNING
+      );
       return;
     }
 
@@ -291,7 +297,9 @@ export default function AdminSettingsPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button
-                                  onClick={() => handleDeleteConfirm(event.id, "event")}
+                                  onClick={() =>
+                                    handleDeleteConfirm(event.id, "event")
+                                  }
                                   className="text-red-600 hover:text-red-900"
                                 >
                                   <TrashIcon className="h-5 w-5" />
@@ -468,9 +476,13 @@ export default function AdminSettingsPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button
-                                  onClick={() => handleDeleteConfirm(role, "user")}
+                                  onClick={() =>
+                                    handleDeleteConfirm(role, "user")
+                                  }
                                   className="text-red-600 hover:text-red-900"
-                                  disabled={role.id === user.id} // Prevent deleting yourself
+                                  disabled={
+                                    !role || !user || role.id === user.id
+                                  } // Prevent deleting yourself and handle undefined/null cases
                                 >
                                   <TrashIcon className="h-5 w-5" />
                                 </button>
@@ -486,14 +498,16 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Confirmation Dialog */}
         <ConfirmDialog
           isOpen={confirmOpen}
           title="Confirm Deletion"
-          message={deleteType === "event" 
-            ? "Are you sure you want to delete this event? This action cannot be undone." 
-            : "Are you sure you want to delete this user? This action cannot be undone."}
+          message={
+            deleteType === "event"
+              ? "Are you sure you want to delete this event? This action cannot be undone."
+              : "Are you sure you want to delete this user? This action cannot be undone."
+          }
           confirmText="Delete"
           cancelText="Cancel"
           confirmButtonClass="bg-red-600 hover:bg-red-700"
