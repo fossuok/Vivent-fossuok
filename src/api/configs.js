@@ -1,5 +1,3 @@
-import { create } from "domain";
-
 export const BASE_URL = process.env.NEXT_PUBLIC_URL;
 
 export const API_URL_CONFIG = {
@@ -25,4 +23,5 @@ export const API_URL_CONFIG = {
     getEmailLogs: `${BASE_URL}/email-logs/?skip=0&limit=100`,
     deleteEmailLogs: `${BASE_URL}/email-logs/delete-logs`,
     createEmailTemplate: `${BASE_URL}/events/`,
+    connection: `${BASE_URL}/health`,
 } 

@@ -33,7 +33,6 @@ export default function ImportLogsPage() {
       }
 
       const data = await response.json();
-      console.log("Import logs:", data);
 
       setLogs(data);
     } catch (error) {

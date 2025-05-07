@@ -74,7 +74,7 @@ export default function AdminSettingsPage() {
     if (activeTab === "users") {
       fetchUsers();
     }
-  }, [activeTab, token, addToast]);
+  }, [activeTab, token]);
 
   const handleDeleteConfirm = (id, type) => {
     setItemToDelete(id);
